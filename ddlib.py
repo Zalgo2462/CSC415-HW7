@@ -142,26 +142,17 @@ def getAngleTo(currTheta, robotX, robotY, destX, destY):
     destX: destination x position
     destY: destination y position
     """
-    destTheta = math.atan2(destY - robotY, destX - robotX)
+    headingVecX = math.cos(currTheta)
+    headingVecY = math.sin(currTheta)
+    diffVecX = destX - robotX
+    diffVecY = destY - robotY
+    diffDist = math.sqrt(diffVecX * diffVecX + diffVecY * diffVecY)
+    dot = headingVecX * diffVecX + headingVecY * diffVecY
+    cross = headingVecX * diffVecY - diffVecX * headingVecY
+    if cross == 0: return 0
+    theta = math.acos(dot / diffDist) # magHeadingVec = 1
+    return -theta if cross < 0 else theta
 
-    # black magic for normalization
-    # https://github.com/apache/commons-math/blob/53ec46ba272e23c0c96ada42f26f4e70e96f3115/src/main/java/org/apache/commons/math4/util/MathUtils.java#L107
-    currTheta = currTheta - 2 * math.pi * math.floor((currTheta + math.pi) / (2 * math.pi))
-    diffTheta = destTheta - currTheta
-    otherWay = 2 * math.pi
-    if diffTheta < 0:
-        otherWay += diffTheta
-    else:
-        otherWay -= diffTheta
-
-    print "Robot Theta %f" % (currTheta)
-    print "Dest Theta %f" % (destTheta)
-    print "T1: %f" % (diffTheta)
-    print "T2: %f" % (otherWay)
-
-    if abs(otherWay) < abs(diffTheta):
-        return otherWay
-    return diffTheta
 
 def genDDTurnTo(r, L, currTheta, robotX, robotY, destX, destY, time, simRate):
     """

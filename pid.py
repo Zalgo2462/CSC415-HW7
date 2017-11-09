@@ -9,6 +9,7 @@ import time
 import math
 import sys
 import numpy as np
+import matplotlib.pyplot as plt
 
 from ddlib import *
 from stdr_robot_data import *
@@ -41,57 +42,71 @@ def main(wheelR, robotR):
     destX = xLocs[i]
     destY = yLocs[i]
 
-    v = 13
+    v = 3
     oldErrTheta = 0
-    oldErrDist = 0
-    oldP1 = v
-    oldP2 = v
-    kHeadingOnly = 5.5
-    kHeadingClose = 5
-    kSpeedClose = 0.1
+    oldOldErrTheta = 0
+    oldHeadingControl = 0
+
+    controlTerms = []
+    kpTerms = []
+    kiTerms = []
+    kdTerms = []
+
+    kpHeading = 4
+    kiHeading = 0.0005
+    kdHeading = 0.05
 
     while not rospy.is_shutdown():
-        print "Dest"
-        print destX
-        print destY
+        print "Dest (%f, %f)" % (destX, destY)
         startTime = time.time()
         currTheta = poseReader.pose.theta
         currX = poseReader.pose.x
         currY = poseReader.pose.y
-        errTheta = getAngleTo(currTheta, currX, currY, destX, destY)
-        errDist = getDistanceTo(currX, currY, destX, destY)
-        newP1 = None
-        newP2 = None
-        print "New - old theta %f" % (errTheta - oldErrTheta)
-        if (errDist < 0.2):
-            ddFKPub.publish(packageDDFK(0, 0, wheelR, robotR))
+        distance = getDistanceTo(currX, currY, destX, destY)
+
+        if (distance < 0.2):
             if i == len(t) - 1:
                 break
             i += 1
             destX = xLocs[i]
             destY = yLocs[i]
-            continue
-        elif (True and errDist > 1):
-            print "A"
-            newP1 = oldP1 + kHeadingOnly * (errTheta - oldErrTheta)
-            newP2 = oldP2 - kHeadingOnly * (errTheta - oldErrTheta)
-        else:
-            print "B"
-            newP1 = oldP1 + kSpeedClose * (
-                v * (errDist - oldErrDist) +
-                kHeadingClose * (errTheta * errDist - oldErrTheta * oldErrDist)
-            )
-            newP2 = oldP2 + kSpeedClose * (
-                v * (errDist - oldErrDist) -
-                kHeadingClose * (errTheta * errDist - oldErrTheta * oldErrDist)
-            )
+
+        errTheta = getAngleTo(currTheta, currX, currY, destX, destY)
+        newHeadingControl = oldHeadingControl + \
+        kpHeading * (errTheta - oldErrTheta) + \
+        kiHeading * (errTheta + oldErrTheta) + \
+        kdHeading * (errTheta - 2 * oldErrTheta + oldOldErrTheta)
+
+        newP1 = (1/wheelR) * (v + robotR * newHeadingControl)
+        newP2 = (1/wheelR) * (v - robotR * newHeadingControl)
+
+        controlTerms.append(newHeadingControl)
+        kpTerms.append(errTheta - oldErrTheta)
+        kiTerms.append(errTheta + oldErrTheta)
+        kdTerms.append(errTheta - 2 * oldErrTheta + oldOldErrTheta)
+
+        oldOldErrTheta = oldErrTheta
         oldErrTheta = errTheta
-        oldErrDist = errDist
-        oldP1 = newP1
-        oldP2 = newP2
+        oldHeadingControl = newHeadingControl
+
+        print "Error: %f" % (errTheta)
+        print "Error Diff: %f" % (errTheta - oldErrTheta)
+        print "Error Sum: %f" % (errTheta + oldErrTheta)
+        print "Control: %f" % (newHeadingControl)
+        print "Wheel Speeds: (%f, %f)" %(newP1, newP2)
+        print ""
+
         newStep = packageDDFK(newP1, newP2, wheelR, robotR)
         time.sleep(DTReader.dt - (time.time() - startTime))
         ddFKPub.publish(newStep)
+
+    ddFKPub.publish(packageDDFK(0, 0, wheelR, robotR))
+    plt.plot(controlTerms, label="control")
+    plt.plot(kpTerms, label="P")
+    plt.plot(kiTerms, label="I")
+    plt.plot(kdTerms, label="D")
+    plt.legend(loc='upper left')
+    plt.show()
 
 if __name__ == '__main__':
     try:
