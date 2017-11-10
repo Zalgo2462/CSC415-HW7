@@ -1,0 +1,13 @@
+<launch>
+	
+	<include file="$(find stdr_robot)/launch/robot_manager.launch" />
+	
+	<node type="stdr_server_node" pkg="stdr_server" name="stdr_server" output="screen" args="$(find stdr_resources)/maps/hw7_obstacles.yaml"/>
+
+	
+	<include file="$(find stdr_gui)/launch/stdr_gui.launch"/>
+	
+	<node pkg="stdr_robot" type="robot_handler" name="$(anon robot_spawn)" args="add $(find stdr_resources)/resources/robots/omni_robot.xml 12 12 0" />
+    <node pkg="stdr_mecanumfk" type ="stdr_mecanumfk_node" name="stdr_mecanumfk" />
+
+</launch>
