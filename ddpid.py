@@ -9,7 +9,6 @@ import time
 import math
 import sys
 import numpy as np
-import matplotlib.pyplot as plt
 
 from ddlib import *
 from stdr_robot_data import *
@@ -47,11 +46,6 @@ def main(wheelR, robotR):
     oldOldErrTheta = 0
     oldHeadingControl = 0
 
-    controlTerms = []
-    kpTerms = []
-    kiTerms = []
-    kdTerms = []
-
     kpHeading = 4
     kiHeading = 0.0005
     kdHeading = 0.05
@@ -80,11 +74,6 @@ def main(wheelR, robotR):
         newP1 = (1/wheelR) * (v + robotR * newHeadingControl)
         newP2 = (1/wheelR) * (v - robotR * newHeadingControl)
 
-        controlTerms.append(newHeadingControl)
-        kpTerms.append(errTheta - oldErrTheta)
-        kiTerms.append(errTheta + oldErrTheta)
-        kdTerms.append(errTheta - 2 * oldErrTheta + oldOldErrTheta)
-
         oldOldErrTheta = oldErrTheta
         oldErrTheta = errTheta
         oldHeadingControl = newHeadingControl
@@ -101,12 +90,6 @@ def main(wheelR, robotR):
         ddFKPub.publish(newStep)
 
     ddFKPub.publish(packageDDFK(0, 0, wheelR, robotR))
-    plt.plot(controlTerms, label="control")
-    plt.plot(kpTerms, label="P")
-    plt.plot(kiTerms, label="I")
-    plt.plot(kdTerms, label="D")
-    plt.legend(loc='upper left')
-    plt.show()
 
 if __name__ == '__main__':
     try:
